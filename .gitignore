@@ -1,0 +1,13 @@
+# Build output — nobody wants your .obj files, Kevin
+build/
+
+# Crash dumps — these are literally gigabytes of "oops"
+*.dmp
+
+# Visual Studio — the IDE's emotional support files
+.vs/
+*.user
+*.suo
+
+# Crinkler zip — we already have the extracted version
+tools/crinkler.zip
