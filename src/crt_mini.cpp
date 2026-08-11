@@ -12,6 +12,11 @@
 // Required by compiler when using floats
 extern "C" int _fltused = 1;
 
+// Declared rather than pulled in from shobjidl.h, which drags a pile of COM
+// interface definitions into a translation unit that has no CRT. shell32.lib is
+// already on the link line, so the import resolves.
+extern "C" HRESULT WINAPI SetCurrentProcessExplicitAppUserModelID(PCWSTR appId);
+
 // Global heap handle — initialized before anything else
 extern "C" HANDLE g_heap = nullptr;
 
@@ -38,6 +43,17 @@ extern "C" void _entry() {
         PFN_CoInitializeEx pfn = (PFN_CoInitializeEx)GetProcAddress(hOle32, "CoInitializeEx");
         if (pfn) pfn(nullptr, 0x2 /*COINIT_APARTMENTTHREADED*/);
     }
+
+    // Claim the same AppUserModelID the installer stamps on the Start Menu
+    // shortcut. Started from that shortcut the identity is inherited, but
+    // started by typing "Pingy" in a terminal, which is the entire point of the
+    // PATH entry, there is no shortcut to inherit from and Windows derives an
+    // identity from the exe path instead. The window then refuses to group
+    // under the pinned icon and pinning it again pins a second one.
+    //
+    // Must match product.aumid in installer.toml. Check-Metadata.ps1 enforces
+    // that in CI.
+    SetCurrentProcessExplicitAppUserModelID(L"LockeWerks.Pingy");
 
     HINSTANCE h = GetModuleHandleW(nullptr);
     int r = wWinMain(h, nullptr, GetCommandLineW(), SW_SHOWDEFAULT);

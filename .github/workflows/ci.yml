@@ -12,6 +12,10 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Check the version and AUMID declarations agree
+        shell: pwsh
+        run: ./scripts/Check-Metadata.ps1
+
       - name: Build
         shell: pwsh
         run: |

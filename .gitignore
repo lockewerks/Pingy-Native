@@ -17,3 +17,6 @@ dist/
 stage/
 tools/lwforge.exe
 tools/lwstub.exe
+
+# Python's leavings from the icon generator
+__pycache__/

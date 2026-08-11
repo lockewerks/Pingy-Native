@@ -1,1 +1,41 @@
+#include <winver.h>
+#include "resource.h"
+
 1 24 "pingy.manifest"
+
+IDI_APPICON ICON "pingy.ico"
+
+// Without this block the Details tab of the file properties is empty, which is
+// where anyone checks what version they actually have installed.
+//
+// FILEVERSION here, the assemblyIdentity in pingy.manifest and the version in
+// installer.toml all have to agree. scripts/Check-Version.ps1 enforces that and
+// runs in CI, because three hand-maintained copies drift.
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION    1,0,1,0
+ PRODUCTVERSION 1,0,1,0
+ FILEFLAGSMASK  VS_FFI_FILEFLAGSMASK
+ FILEFLAGS      0
+ FILEOS         VOS_NT_WINDOWS32
+ FILETYPE       VFT_APP
+ FILESUBTYPE    VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "CompanyName",      "Locke Werks"
+            VALUE "FileDescription",  "Real-time network ping visualizer"
+            VALUE "FileVersion",      "1.0.1.0"
+            VALUE "InternalName",     "Pingy"
+            VALUE "LegalCopyright",   "Copyright (c) 2026 Locke Werks"
+            VALUE "OriginalFilename", "Pingy.exe"
+            VALUE "ProductName",      "Pingy"
+            VALUE "ProductVersion",   "1.0.1"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END

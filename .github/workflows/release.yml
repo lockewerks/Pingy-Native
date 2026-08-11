@@ -13,18 +13,12 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      # A tag that disagrees with installer.toml ships an installer whose ARP
-      # entry, upgrade comparison and release page all claim different versions.
-      - name: Check the tag against installer.toml
+      # A tag that disagrees with any of the version declarations ships an
+      # installer whose ARP entry, the exe's Details tab and the release page
+      # each claim something different.
+      - name: Check the tag and metadata declarations agree
         shell: pwsh
-        run: |
-          $tag = '${{ github.ref_name }}' -replace '^v', ''
-          $declared = (Select-String -Path installer.toml -Pattern '^\s*version\s*=\s*"([^"]+)"' |
-                       Select-Object -First 1).Matches.Groups[1].Value
-          "tag: $tag   installer.toml: $declared"
-          if ($tag -ne $declared) {
-            throw "tag $tag does not match installer.toml version $declared"
-          }
+        run: ./scripts/Check-Metadata.ps1 -Tag '${{ github.ref_name }}'
 
       - name: Build
         shell: pwsh

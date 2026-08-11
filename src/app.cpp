@@ -2,6 +2,7 @@
 #include "theme.h"
 #include "graph.h"
 #include "math_util.h"
+#include "resource.h"
 
 App* App::g_app = nullptr;
 
@@ -19,6 +20,14 @@ bool App::Initialize(HINSTANCE hInstance) {
     wc.lpfnWndProc = WndProc;
     wc.hInstance = hInstance;
     wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
+    // LoadImageW rather than LoadIconW: LoadIconW only ever returns the large
+    // icon, which Windows then squashes for the title bar and the alt-tab list.
+    // Asking for the small metrics picks the 16px entry the .ico actually has.
+    wc.hIcon = (HICON)LoadImageW(hInstance, MAKEINTRESOURCEW(IDI_APPICON), IMAGE_ICON,
+                                 0, 0, LR_DEFAULTSIZE);
+    wc.hIconSm = (HICON)LoadImageW(hInstance, MAKEINTRESOURCEW(IDI_APPICON), IMAGE_ICON,
+                                   GetSystemMetrics(SM_CXSMICON),
+                                   GetSystemMetrics(SM_CYSMICON), 0);
     wc.lpszClassName = L"PingyWindow";
     wc.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
     RegisterClassExW(&wc);

@@ -10,6 +10,8 @@ url          = "https://github.com/lockewerks/Pingy-Native"
 upgrade_code = "ef30e1aa-84ad-4e61-8839-193ec66fb747"
 # No version component, so taskbar pins survive an upgrade.
 aumid        = "LockeWerks.Pingy"
+# Literal string, so the backslash stays a backslash. Relative to this file.
+icon         = 'src\pingy.ico'
 
 [install]
 # Machine scope: the PATH entry goes in HKLM so Pingy resolves for every account

@@ -1,6 +1,6 @@
 # Pingy
 
-**A 52KB real-time network ping visualizer for Windows that absolutely did not need to be this overengineered.**
+**A 66KB real-time network ping visualizer for Windows that absolutely did not need to be this overengineered.**
 
 Pingy monitors multiple hosts simultaneously and renders their latency history as smooth, interpolated curves on a 3D perspective graph. It's `ping` if `ping` went to art school, dropped out, and got really into the demoscene.
 
@@ -13,7 +13,7 @@ It's a native Windows desktop app that:
 - Displays the results on a **3D perspective-projected graph** with parallax depth between targets
 - Shows live stats per target: current, average, min, max latency + packet loss
 - Saves your targets and settings to a JSON config (hand-parsed, obviously)
-- Ships as a **~52KB standalone executable** with zero external dependencies and no C runtime
+- Ships as a **~66KB standalone executable** with zero external dependencies and no C runtime
 
 ## The Absurd Technical Decisions
 
@@ -76,7 +76,7 @@ Settings live in `%APPDATA%\Pingy\pingy_config.json`. Uninstalling doesn't touch
 build.bat
 ```
 
-That's it. One script. It compiles everything with `/O1` (optimize for size), links against nothing it doesn't need, and produces a ~52KB x64 executable. Fifty-two kilobytes, for a Direct2D app with a thread per target.
+That's it. One script. It compiles everything with `/O1` (optimize for size), links against nothing it doesn't need, and produces a ~66KB x64 executable. Sixty-six kilobytes, for a Direct2D app with a thread per target, and 13KB of that is the icon.
 
 The build script:
 1. Compiles `crt_mini.cpp` separately (my CRT replacement, since `/GL` and intrinsics don't mix)
@@ -90,11 +90,27 @@ Every step is checked and the script exits 1 if any of them fails, so you can ca
 
 | File | Size | What |
 |------|------|------|
-| `build\Pingy.exe` | ~52 KB | The build. x64, no CRT, no dependencies |
+| `build\Pingy.exe` | ~66 KB | The build. x64, no CRT, no dependencies |
+
+### The icon
+
+`src\pingy.ico` is generated, not hand-drawn:
+
+```
+python tools/make-icon.py
+```
+
+Pillow is the only dependency and it's only needed to regenerate: the `.ico` is committed, so building needs nothing but the VS toolchain.
+
+It draws a latency trace with the same Catmull-Rom interpolation `graph.cpp` uses, in the same red as `Theme::PrimaryRed`, at seven sizes from 16 to 256px. Each size is rendered separately rather than scaled from one image, because a stroke that reads at 256px vanishes at 16px. Entries are PNG-compressed and palette-quantized where that's smaller, which is the difference between a 13KB icon and a 55KB one.
+
+### Versioning
+
+The version is written by hand in three files that can't include each other: `installer.toml`, `src\pingy.manifest` and `src\pingy.rc`. The AppUserModelID is written in two more, `installer.toml` and `src\crt_mini.cpp`. `scripts\Check-Metadata.ps1` asserts they all agree, and CI runs it on every push. On a release it also checks the tag. Bump all three versions together, or the build stops before anything is signed.
 
 ### CI
 
-Every push builds on `windows-latest` and forges an unsigned installer, so a broken `installer.toml` fails there rather than at release time. Pushing a `v*` tag runs the release workflow: it signs the binary, packages it with [Forge](https://github.com/Locke-Werks/Forge), signs the installer, verifies both signatures, and publishes the release. The tag has to match the version in `installer.toml` or the job stops before anything gets signed.
+Every push checks the versions, builds on `windows-latest`, and forges an unsigned installer, so a broken `installer.toml` fails there rather than at release time. Pushing a `v*` tag runs the release workflow: it signs the binary, packages it with [Forge](https://github.com/Locke-Werks/Forge), signs the installer, verifies both signatures, and publishes the release. The tag has to match the version in `installer.toml` or the job stops before anything gets signed.
 
 ### About that 16 KB
 
@@ -158,7 +174,7 @@ A: Because the C runtime adds ~100KB and I took that personally.
 A: No. It uses Win32, Direct2D, ICMP via IPHLPAPI, and hand-written x86 assembly. Porting this would require rewriting approximately everything.
 
 **Q: Why is the executable so small?**
-A: Zero CRT, no STL, no external dependencies, and aggressive compiler flags. 52KB for a hardware-accelerated GUI app is what happens when you refuse to link anything you didn't write.
+A: Zero CRT, no STL, no external dependencies, and aggressive compiler flags. 66KB for a hardware-accelerated GUI app is what happens when you refuse to link anything you didn't write.
 
 **Q: Is this a demoscene production?**
 A: It has the spirit of one. Custom entry point, hand-rolled math, inline assembly, placement new, and a documented stint with a compressing linker. It just happens to also be useful.
