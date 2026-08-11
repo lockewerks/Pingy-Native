@@ -1,6 +1,6 @@
 # Pingy
 
-**A 16KB real-time network ping visualizer for Windows that absolutely did not need to be this overengineered.**
+**A 52KB real-time network ping visualizer for Windows that absolutely did not need to be this overengineered.**
 
 Pingy monitors multiple hosts simultaneously and renders their latency history as smooth, interpolated curves on a 3D perspective graph. It's `ping` if `ping` went to art school, dropped out, and got really into the demoscene.
 
@@ -13,7 +13,7 @@ It's a native Windows desktop app that:
 - Displays the results on a **3D perspective-projected graph** with parallax depth between targets
 - Shows live stats per target: current, average, min, max latency + packet loss
 - Saves your targets and settings to a JSON config (hand-parsed, obviously)
-- Ships as a **16KB standalone executable** via [Crinkler](https://github.com/runestubbe/Crinkler) (demoscene compressing linker) with zero external dependencies
+- Ships as a **~52KB standalone executable** with zero external dependencies and no C runtime
 
 ## The Absurd Technical Decisions
 
@@ -27,7 +27,7 @@ Let me be clear: **none of this was necessary.**
 | x86 inline assembly for 64-bit division | Because `_aulldiv` isn't going to implement itself. Oh wait, it literally is. |
 | Hand-written JSON serializer/parser | No third-party dependencies means no third-party dependencies. I *meant* it. |
 | 3D perspective projection for a ping graph | Your latency data deserves depth. Literally. |
-| Crinkler as the actual linker | The executable needed to be smaller than a particularly ambitious JPEG. And it is. 16KB. |
+| A detour through Crinkler | The executable needed to be smaller than a particularly ambitious JPEG. It got to 16KB. Then it needed to be 64-bit, and Crinkler doesn't do 64-bit. |
 | Custom entry point bypassing CRT init | `_entry()` loads `ole32.dll` manually via `GetProcAddress` like a goddamn animal. |
 | `Sleep(1)` render loop | ~1000fps cap. Your ping graph runs smoother than most AAA games. |
 
@@ -43,6 +43,25 @@ Let me be clear: **none of this was necessary.**
 - **Color-coded latency** — Green (good), yellow (meh), red (your ISP is lying to you)
 - **Default targets** — Starts with Google DNS, Cloudflare, Quad9, and OpenDNS because those are the four horsemen of "is the internet working?"
 
+## Install
+
+Grab `Pingy-Setup.exe` from the [latest release](https://github.com/lockewerks/Pingy-Native/releases/latest) and run it. Windows 10 1703 or later, x64. The installer checks, because below that the per-monitor DPI manifest is ignored and everything renders blurry on a scaled display.
+
+It installs to `C:\Program Files\Pingy`, adds that directory to the system PATH, and drops a Start Menu shortcut. So `Pingy` from any terminal, on any account on the machine, launches it. The installer and the binary inside it are both Authenticode signed.
+
+Already-open terminals keep the PATH they started with, so a new one is required. That's Windows, not me.
+
+Unattended:
+
+```batch
+Pingy-Setup.exe /S                          :: silent
+Pingy-Setup.exe /S /O:add_to_path=off       :: skip the PATH entry
+Pingy-Setup.exe /S /O:desktop_shortcut=on   :: desktop shortcut as well
+Pingy-Setup.exe /uninstall
+```
+
+Settings live in `%APPDATA%\Pingy\pingy_config.json`. Uninstalling doesn't touch them, so reinstalling picks your targets back up.
+
 ## Building
 
 ### Prerequisites
@@ -57,19 +76,31 @@ Let me be clear: **none of this was necessary.**
 build.bat
 ```
 
-That's it. One script. It compiles everything with `/O1` (optimize for size), links with [Crinkler](https://github.com/runestubbe/Crinkler) (a demoscene compressing linker), and produces a ~16KB executable. Sixteen. Kilobytes.
+That's it. One script. It compiles everything with `/O1` (optimize for size), links against nothing it doesn't need, and produces a ~52KB x64 executable. Fifty-two kilobytes, for a Direct2D app with a thread per target.
 
 The build script:
-1. Compiles `crt_mini.cpp` separately (my CRT replacement — can't use `/GL` with intrinsics)
+1. Compiles `crt_mini.cpp` separately (my CRT replacement, since `/GL` and intrinsics don't mix)
 2. Compiles all other source files with whole program optimization
-3. Links with Crinkler, custom entry point (`_entry`), no default libs
+3. Links with `/NODEFAULTLIB` and a custom entry point (`/ENTRY:_entry`)
 4. Merges `.rdata` into `.text` because every byte counts when you've lost the plot
+
+One trap: `build.bat` ends with `popd`, so its exit code is `popd`'s and a failed compile still exits 0. Don't trust the exit code, check that `build\Pingy.exe` was actually written. That's what CI does.
 
 ### Output
 
 | File | Size | What |
 |------|------|------|
-| `build\PingyCrinkled.exe` | ~16 KB | Release build via Crinkler |
+| `build\Pingy.exe` | ~52 KB | The build. x64, no CRT, no dependencies |
+
+### CI
+
+Every push builds on `windows-latest` and forges an unsigned installer, so a broken `installer.toml` fails there rather than at release time. Pushing a `v*` tag runs the release workflow: it signs the binary, packages it with [Forge](https://github.com/Locke-Werks/Forge), signs the installer, verifies both signatures, and publishes the release. The tag has to match the version in `installer.toml` or the job stops before anything gets signed.
+
+### About that 16 KB
+
+Earlier builds went through [Crinkler](https://github.com/runestubbe/Crinkler), a demoscene compressing linker written for 4K intros, and came out at 16KB. It's still vendored in `tools/crinkler23` and the artifact was `build\PingyCrinkled.exe`.
+
+It's not in `build.bat` and the release doesn't ship it, for one boring reason: Crinkler only targets x86. A 32-bit build is not what anyone wants installed in 2026, so the x64 binary is the one that ships. Everything underneath is unchanged, hand-rolled CRT and all. It's just linked by a linker that has heard of 64-bit.
 
 ## Architecture
 
@@ -127,10 +158,10 @@ A: Because the C runtime adds ~100KB and I took that personally.
 A: No. It uses Win32, Direct2D, ICMP via IPHLPAPI, and hand-written x86 assembly. Porting this would require rewriting approximately everything.
 
 **Q: Why is the executable so small?**
-A: Zero CRT, no STL, no external dependencies, aggressive compiler flags, and Crinkler — a demoscene compressing linker designed for 4K intros. I brought a nuclear weapon to a knife fight.
+A: Zero CRT, no STL, no external dependencies, and aggressive compiler flags. 52KB for a hardware-accelerated GUI app is what happens when you refuse to link anything you didn't write.
 
 **Q: Is this a demoscene production?**
-A: It has the spirit of one. Custom entry point, hand-rolled math, inline assembly, placement new, and a compressing linker. It just happens to also be useful.
+A: It has the spirit of one. Custom entry point, hand-rolled math, inline assembly, placement new, and a documented stint with a compressing linker. It just happens to also be useful.
 
 **Q: Can I add my own targets?**
 A: Yes. Click the "+ ADD TARGET" button. Type a hostname or IP. Hit Enter. Rocket science.
