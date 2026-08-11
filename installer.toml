@@ -1,6 +1,6 @@
 [product]
 name         = "Pingy"
-version      = "1.0.1"
+version      = "1.0.2"
 publisher    = "Locke Werks"
 description  = "Real-time network ping visualizer. 3D perspective graph, no dependencies."
 copyright    = "Copyright (c) 2026 Locke Werks"

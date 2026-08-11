@@ -12,8 +12,8 @@ IDI_APPICON ICON "pingy.ico"
 // installer.toml all have to agree. scripts/Check-Version.ps1 enforces that and
 // runs in CI, because three hand-maintained copies drift.
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION    1,0,1,0
- PRODUCTVERSION 1,0,1,0
+ FILEVERSION    1,0,2,0
+ PRODUCTVERSION 1,0,2,0
  FILEFLAGSMASK  VS_FFI_FILEFLAGSMASK
  FILEFLAGS      0
  FILEOS         VOS_NT_WINDOWS32
@@ -26,12 +26,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName",      "Locke Werks"
             VALUE "FileDescription",  "Real-time network ping visualizer"
-            VALUE "FileVersion",      "1.0.1.0"
+            VALUE "FileVersion",      "1.0.2.0"
             VALUE "InternalName",     "Pingy"
             VALUE "LegalCopyright",   "Copyright (c) 2026 Locke Werks"
             VALUE "OriginalFilename", "Pingy.exe"
             VALUE "ProductName",      "Pingy"
-            VALUE "ProductVersion",   "1.0.1"
+            VALUE "ProductVersion",   "1.0.2"
         END
     END
     BLOCK "VarFileInfo"
