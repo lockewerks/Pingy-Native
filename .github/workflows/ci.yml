@@ -60,7 +60,7 @@ jobs:
           ./tools/lwforge.exe inspect dist/Pingy-Setup-dev.exe
           if ($LASTEXITCODE -ne 0) { throw 'the installer cannot read its own container' }
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         with:
           name: Pingy-dev
           path: |
