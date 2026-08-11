@@ -11,7 +11,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # A tag that disagrees with installer.toml ships an installer whose ARP
       # entry, upgrade comparison and release page all claim different versions.

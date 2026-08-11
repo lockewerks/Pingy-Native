@@ -10,7 +10,7 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Build
         shell: pwsh
@@ -60,7 +60,7 @@ jobs:
           ./tools/lwforge.exe inspect dist/Pingy-Setup-dev.exe
           if ($LASTEXITCODE -ne 0) { throw 'the installer cannot read its own container' }
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: Pingy-dev
           path: |
