@@ -1,0 +1,79 @@
+[product]
+name         = "Pingy"
+version      = "1.0.0"
+publisher    = "Locke Werks"
+description  = "Real-time network ping visualizer. 3D perspective graph, no dependencies."
+copyright    = "Copyright (c) 2026 Locke Werks"
+url          = "https://github.com/lockewerks/Pingy-Native"
+# Stable across versions. Upgrade detection and the single-instance mutex key off
+# this, so changing it makes an upgrade look like a fresh product.
+upgrade_code = "ef30e1aa-84ad-4e61-8839-193ec66fb747"
+# No version component, so taskbar pins survive an upgrade.
+aumid        = "LockeWerks.Pingy"
+
+[install]
+# Machine scope: the PATH entry goes in HKLM so Pingy resolves for every account
+# on the box, not just the one that ran setup.
+scope     = "machine"
+dir       = "{ProgramFiles}\\Pingy"
+elevation = "required"
+
+[ui]
+license_text = """
+Pingy
+
+Copyright (c) 2026 Locke Werks
+
+Do whatever you want with it. Seriously. If you want to use this to monitor your
+grandma's WiFi latency with a 3D perspective graph, go for it. That's exactly
+what this is for.
+"""
+
+[[options]]
+id      = "add_to_path"
+label   = "Add Pingy to the system PATH"
+detail  = "Lets you run `Pingy` from any terminal. Changes PATH for every user on this machine."
+default = true
+
+[[options]]
+id      = "desktop_shortcut"
+label   = "Put a shortcut on the desktop"
+default = false
+
+# PerMonitorV2 DPI awareness, declared in the app manifest, landed in Windows 10
+# 1703. Below that the manifest is ignored and the window renders blurry on any
+# scaled display.
+[[preflight]]
+type = "os_build"
+min  = 15063
+fail = "Windows 10 version 1703 or later is required."
+
+# A running Pingy holds its own image open, so the copy would fail partway
+# through. restart_manager offers to close it instead of dead-ending.
+[[preflight]]
+type            = "process_not_running"
+name            = "Pingy.exe"
+restart_manager = true
+fail            = "Close Pingy before installing."
+
+[[actions]]
+type   = "shortcut"
+target = "{InstallDir}\\Pingy.exe"
+where  = "common_programs"
+name   = "Pingy"
+
+[[actions]]
+type   = "shortcut"
+target = "{InstallDir}\\Pingy.exe"
+where  = "desktop"
+name   = "Pingy"
+when   = "desktop_shortcut"
+
+# The install directory itself, since Pingy.exe is the only thing in it.
+[[actions]]
+type  = "path_append"
+value = "{InstallDir}"
+when  = "add_to_path"
+
+[[actions]]
+type = "arp"
