@@ -84,7 +84,7 @@ The build script:
 3. Links with `/NODEFAULTLIB` and a custom entry point (`/ENTRY:_entry`)
 4. Merges `.rdata` into `.text` because every byte counts when you've lost the plot
 
-One trap: `build.bat` ends with `popd`, so its exit code is `popd`'s and a failed compile still exits 0. Don't trust the exit code, check that `build\Pingy.exe` was actually written. That's what CI does.
+Every step is checked and the script exits 1 if any of them fails, so you can call it from something else without wondering. It used to end on a bare `popd`, which reset the exit code to 0 and reported a failed compile as success.
 
 ### Output
 
@@ -168,4 +168,6 @@ A: Yes. Click the "+ ADD TARGET" button. Type a hostname or IP. Hit Enter. Rocke
 
 ## License
 
-Do whatever you want with it. Seriously. If you want to use this code to monitor your grandma's WiFi latency with a 3D perspective graph, go for it. That's exactly what this is for.
+MIT. See [LICENSE](LICENSE).
+
+Which is the formal way of saying: do whatever you want with it. Seriously. If you want to use this code to monitor your grandma's WiFi latency with a 3D perspective graph, go for it. That's exactly what this is for.

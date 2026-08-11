@@ -15,9 +15,9 @@ jobs:
       - name: Build
         shell: pwsh
         run: |
-          # build.bat has no error checks and ends with popd, so its exit code is
-          # popd's and is always 0. Clear the target first and assert it came
-          # back, otherwise a failed compile reports a green build.
+          # build.bat checks each step and exits 1 on failure, but pwsh only
+          # surfaces the last command's code, so check it explicitly. Clearing
+          # the target first means a stale exe cannot pass for a fresh one.
           Remove-Item build/Pingy.exe -ErrorAction SilentlyContinue
 
           $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
@@ -28,6 +28,7 @@ jobs:
 
           $vcvars = Join-Path $install 'VC\Auxiliary\Build\vcvars64.bat'
           cmd /c "call `"$vcvars`" >nul 2>&1 && call build.bat"
+          if ($LASTEXITCODE -ne 0) { throw "build.bat exited $LASTEXITCODE" }
 
           if (-not (Test-Path build/Pingy.exe)) { throw 'build produced no build/Pingy.exe' }
           Get-Item build/Pingy.exe | Select-Object Name, Length | Format-Table -AutoSize
