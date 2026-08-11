@@ -11,3 +11,9 @@ build/
 
 # Crinkler zip — we already have the extracted version
 tools/crinkler.zip
+
+# Installer output and its staging dir — CI builds these, git doesn't hold them
+dist/
+stage/
+tools/lwforge.exe
+tools/lwstub.exe

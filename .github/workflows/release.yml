@@ -1,0 +1,179 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  release:
+    runs-on: windows-latest
+    environment: release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      # A tag that disagrees with installer.toml ships an installer whose ARP
+      # entry, upgrade comparison and release page all claim different versions.
+      - name: Check the tag against installer.toml
+        shell: pwsh
+        run: |
+          $tag = '${{ github.ref_name }}' -replace '^v', ''
+          $declared = (Select-String -Path installer.toml -Pattern '^\s*version\s*=\s*"([^"]+)"' |
+                       Select-Object -First 1).Matches.Groups[1].Value
+          "tag: $tag   installer.toml: $declared"
+          if ($tag -ne $declared) {
+            throw "tag $tag does not match installer.toml version $declared"
+          }
+
+      - name: Build
+        shell: pwsh
+        run: |
+          # build.bat ends with popd, so its exit code is popd's. Assert the
+          # artifact instead of trusting it.
+          Remove-Item build/Pingy.exe -ErrorAction SilentlyContinue
+
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+          $install = & $vswhere -latest -products * `
+                                -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
+                                -property installationPath
+          if (-not $install) { throw 'no Visual Studio installation with the C++ x64 toolset' }
+
+          $vcvars = Join-Path $install 'VC\Auxiliary\Build\vcvars64.bat'
+          cmd /c "call `"$vcvars`" >nul 2>&1 && call build.bat"
+
+          if (-not (Test-Path build/Pingy.exe)) { throw 'build produced no build/Pingy.exe' }
+
+      # Everything under stage/ lands on the customer's disk byte for byte.
+      - name: Stage the payload
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path stage | Out-Null
+          Copy-Item build/Pingy.exe stage/
+
+      # Before forging. Forge hashes payload members into the container and
+      # extracts them verbatim, so an unsigned binary going in stays unsigned on
+      # the installed machine. Signing the finished installer does nothing here.
+      - name: Sign the payload
+        uses: azure/trusted-signing-action@v0
+        with:
+          azure-tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          azure-client-id: ${{ vars.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: https://eus.codesigning.azure.net
+          trusted-signing-account-name: specterpoint
+          certificate-profile-name: specterpoint
+          files-folder: stage
+          files-folder-filter: exe
+          files-folder-recurse: true
+          file-digest: SHA256
+          # Certificates are valid for three days. Without the timestamp the
+          # signature stops validating within the week. Not optional.
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      # Forge is public, so the job's own token reads its releases. The stub in
+      # the release is already signed, which is what makes the uninstaller left
+      # in Program Files signed without a second signing pass here.
+      - name: Fetch Forge
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download v0.2.0 --repo Locke-Werks/Forge --pattern '*.exe' --dir tools
+          foreach ($name in 'lwforge.exe', 'lwstub.exe') {
+            $sig = Get-AuthenticodeSignature "tools/$name"
+            "$name : $($sig.Status)"
+            if ($sig.Status -ne 'Valid') { throw "tools/$name is $($sig.Status)" }
+          }
+
+      # No --sign: that flag shells out to scripts/sign.ps1 resolved against the
+      # working directory, which exists only in the Forge repo. Signing is the
+      # next step.
+      - name: Forge the installer
+        shell: pwsh
+        run: |
+          ./tools/lwforge.exe build `
+            --config installer.toml `
+            --payload stage `
+            --stub tools/lwstub.exe `
+            --out dist/Pingy-Setup.exe
+          if ($LASTEXITCODE -ne 0) { throw "forge exited $LASTEXITCODE" }
+
+      # Last, after resource stamping and the container append have already
+      # rewritten the image.
+      - name: Sign the installer
+        uses: azure/trusted-signing-action@v0
+        with:
+          azure-tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          azure-client-id: ${{ vars.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: https://eus.codesigning.azure.net
+          trusted-signing-account-name: specterpoint
+          certificate-profile-name: specterpoint
+          files-folder: dist
+          files-folder-filter: exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Verify
+        shell: pwsh
+        run: |
+          # The action exiting zero is not the same as the file being signed.
+          # This catches a silently skipped folder or a wrong folder filter.
+          $sig = Get-AuthenticodeSignature dist/Pingy-Setup.exe
+          "installer: $($sig.Status)  $($sig.SignerCertificate.Subject)"
+          if ($sig.Status -ne 'Valid') { throw "installer is $($sig.Status)" }
+
+          $payload = Get-AuthenticodeSignature stage/Pingy.exe
+          "payload:   $($payload.Status)"
+          if ($payload.Status -ne 'Valid') { throw "payload Pingy.exe is $($payload.Status)" }
+
+          # Signing appended a certificate table after the container. This proves
+          # it did not orphan the payload, and it is the check people leave out.
+          ./tools/lwforge.exe inspect dist/Pingy-Setup.exe
+          if ($LASTEXITCODE -ne 0) { throw 'the signed installer cannot read its own container' }
+
+      - name: Verify the option surface
+        shell: pwsh
+        run: |
+          # Lists the effective option set after the command line, which is where
+          # a /O: switch the installer no longer declares shows up. The stub is a
+          # GUI-subsystem binary, so wait on the process rather than the pipe:
+          # a shell that does not wait reads a stale exit code.
+          $setup = (Resolve-Path dist/Pingy-Setup.exe).Path
+          $p = Start-Process -FilePath $setup `
+                             -ArgumentList '--check-only', '/O:add_to_path=off' -PassThru
+          if (-not $p.WaitForExit(60000)) {
+            $p.Kill()
+            throw '--check-only did not exit within 60s'
+          }
+          "--check-only exit: $($p.ExitCode)"
+          if ($p.ExitCode -ne 0) { throw "--check-only exited $($p.ExitCode)" }
+
+      - name: Publish
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Built as an array rather than a here-string: a here-string's closing
+          # "@ has to sit at column 0, which ends the YAML block scalar.
+          $hash = (Get-FileHash dist/Pingy-Setup.exe -Algorithm SHA256).Hash.ToLower()
+          $notes = @(
+            'Signed installer for Pingy ${{ github.ref_name }}.'
+            ''
+            'Installs to C:\Program Files\Pingy and adds it to the system PATH, so'
+            'Pingy runs from any terminal.'
+            ''
+            'Silent install:      Pingy-Setup.exe /S'
+            'Skip the PATH entry: /O:add_to_path=off'
+            ''
+            "SHA256: $hash"
+          )
+          $notes -join "`n" | Set-Content release-notes.md -Encoding utf8
+
+          gh release create "${{ github.ref_name }}" dist/Pingy-Setup.exe `
+            --repo "${{ github.repository }}" `
+            --title "Pingy ${{ github.ref_name }}" `
+            --notes-file release-notes.md
