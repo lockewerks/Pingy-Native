@@ -1,6 +1,18 @@
+<div align="center">
+
+<img src="assets/pingy-native.ico" width="96" alt="Pingy">
+
 # Pingy
 
-**A 66KB real-time network ping visualizer for Windows that absolutely did not need to be this overengineered.**
+**A 66KB real-time ping visualizer for Windows that absolutely did not need to be this overengineered**
+
+[![release](https://img.shields.io/github/v/release/lockewerks/Pingy-Native?style=flat-square&color=d6262a)](https://github.com/lockewerks/Pingy-Native/releases)
+[![license](https://img.shields.io/badge/license-MIT-d6262a?style=flat-square)](LICENSE)
+![platform](https://img.shields.io/badge/platform-Windows%2010%201703%2B%20x64-d6262a?style=flat-square)
+
+</div>
+
+---
 
 Pingy monitors multiple hosts simultaneously and renders their latency history as smooth, interpolated curves on a 3D perspective graph. It's `ping` if `ping` went to art school, dropped out, and got really into the demoscene.
 
