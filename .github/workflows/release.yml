@@ -76,7 +76,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release download v0.2.0 --repo Locke-Werks/Forge --pattern '*.exe' --dir tools
+          gh release download v0.4.0 --repo Locke-Werks/Forge --pattern '*.exe' --dir tools
           foreach ($name in 'lwforge.exe', 'lwstub.exe') {
             $sig = Get-AuthenticodeSignature "tools/$name"
             "$name : $($sig.Status)"

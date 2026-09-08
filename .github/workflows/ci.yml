@@ -43,7 +43,7 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release download v0.2.0 --repo Locke-Werks/Forge --pattern '*.exe' --dir tools
+        run: gh release download v0.4.0 --repo Locke-Werks/Forge --pattern '*.exe' --dir tools
 
       # Builds the installer unsigned on every push, so a bad token, a `when`
       # naming an option that no longer exists, or a payload path that stopped
